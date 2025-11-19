@@ -1,20 +1,22 @@
 """
-ADS Python 콘솔용 2포트 필터 레이아웃 생성 스크립트
+ADS Python 콘솔용 2포트 필터 레이아웃 생성 스크립트 (ADS 2024)
 
 사용법:
-1. ADS 실행
+1. ADS 실행 및 워크스페이스 열기
 2. Tools -> Command Line -> Python Console 열기
 3. 이 스크립트 내용을 복사하여 붙여넣기
    또는: exec(open(r"경로\ads_python_2port_filter.py").read())
 """
 
-import ads
 import numpy as np
 import random
 from datetime import datetime
+from keysight.ads import de
+from keysight.ads.de.experimental.design_editor import DesignEditor
+from keysight.ads.de.experimental_uu import db
 
 # ===== 사용자 설정 =====
-lib_name = "MyFirstWorkspace"  # ADS 라이브러리 이름
+lib_name = "1112sangmin_lib"   # ADS 라이브러리 이름
 cell_name = "TwoPortFilter"    # 생성할 셀 이름
 layer_id = 1                   # 레이아웃 레이어 번호
 
@@ -133,26 +135,30 @@ print(f"전체 픽셀맵 크기: {full_pixmap.shape[1]} x {full_pixmap.shape[0]}
 # ===== ADS 레이아웃 생성 =====
 print("\nADS 레이아웃 생성 중...")
 
-# 라이브러리 확인/생성
-try:
-    lib = ads.lib.get_lib(lib_name)
-except:
+# 라이브러리 확인
+lib = de.get_lib(lib_name)
+if lib is None:
     print(f"라이브러리 '{lib_name}'를 찾을 수 없습니다.")
     print("먼저 ADS에서 워크스페이스를 열어주세요.")
-    raise
+    raise Exception(f"Library '{lib_name}' not found")
+
+print(f"라이브러리 '{lib_name}' 확인됨")
 
 # 기존 셀이 있으면 삭제
 try:
-    existing_cell = lib.get_cell(cell_name)
+    existing_cell = de.get_cell(lib_name, cell_name)
     if existing_cell:
-        existing_cell.delete()
+        de.delete_cell(lib_name, cell_name)
         print(f"기존 셀 '{cell_name}' 삭제됨")
 except:
     pass
 
-# 새 셀 생성
-cell = lib.new_cell(cell_name, "layout")
-layout = cell.layout
+# 새 레이아웃 셀 생성
+de.create_layout(lib_name, cell_name)
+print(f"새 셀 '{cell_name}' 생성됨")
+
+# DesignEditor로 레이아웃 편집
+editor = DesignEditor(lib_name, cell_name)
 
 # 픽셀을 사각형으로 변환
 pixel_size_um = pixelSize * mil_to_um
@@ -168,27 +174,32 @@ for row in range(full_pixmap.shape[0]):
             y2 = (row + 1) * pixel_size_um
 
             # 사각형 추가
-            layout.add_rect(layer_id, x1, y1, x2, y2)
+            editor.add_rect(layer_id, 0, x1, y1, x2, y2)  # layer_id, datatype, x1, y1, x2, y2
             rect_count += 1
 
 print(f"사각형 {rect_count}개 생성됨")
 
 # 포트 추가
 port_y = mid_row * pixel_size_um + pixel_size_um / 2
+port_width_um = port_w * mil_to_um
 
 # 포트 1 (왼쪽)
 port1_x = 0
-layout.add_pin("P1", layer_id, port1_x, port_y, 0, port_w * mil_to_um)
+editor.add_pin("P1", layer_id, 0, port1_x, port_y - port_width_um/2,
+               port1_x + pixel_size_um, port_y + port_width_um/2)
 
 # 포트 2 (오른쪽)
 port2_x = full_pixmap.shape[1] * pixel_size_um
-layout.add_pin("P2", layer_id, port2_x, port_y, 180, port_w * mil_to_um)
+editor.add_pin("P2", layer_id, 0, port2_x - pixel_size_um, port_y - port_width_um/2,
+               port2_x, port_y + port_width_um/2)
 
 print("포트 2개 추가됨")
 
-# 셀 저장 및 열기
-cell.save()
-cell.open()
+# 변경사항 저장
+editor.save()
+
+# 셀 열기
+de.open_design(lib_name, cell_name)
 
 print(f"\n===== 완료 =====")
 print(f"라이브러리: {lib_name}")
