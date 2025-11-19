@@ -144,18 +144,15 @@ if not de.library_is_open(lib_name):
 lib = de.get_open_library(lib_name)
 print(f"라이브러리 '{lib_name}' 확인됨")
 
-# 기존 셀이 있으면 확인
+# 기존 셀이 있으면 삭제
 view_name = "layout"
 if de.cellview_exists(lib_name, cell_name, view_name):
-    print(f"기존 셀 '{cell_name}' 발견됨 - 덮어씁니다")
+    print(f"기존 셀 '{cell_name}' 발견됨 - 삭제합니다")
+    lib.delete_cell(cell_name)
 
-# 새 레이아웃 셀 생성
-cell = lib.create_cell(cell_name)
-layout_view = cell.create_cellview(view_name)
-print(f"새 셀 '{cell_name}' 생성됨")
-
-# DesignEditor로 레이아웃 편집
+# DesignEditor로 새 레이아웃 생성 (셀이 없으면 자동 생성)
 editor = DesignEditor(lib_name, cell_name)
+print(f"셀 '{cell_name}' 생성됨")
 
 # 픽셀을 사각형으로 변환
 pixel_size_um = pixelSize * mil_to_um
