@@ -136,25 +136,22 @@ print(f"전체 픽셀맵 크기: {full_pixmap.shape[1]} x {full_pixmap.shape[0]}
 print("\nADS 레이아웃 생성 중...")
 
 # 라이브러리 확인
-lib = de.get_lib(lib_name)
-if lib is None:
-    print(f"라이브러리 '{lib_name}'를 찾을 수 없습니다.")
-    print("먼저 ADS에서 워크스페이스를 열어주세요.")
-    raise Exception(f"Library '{lib_name}' not found")
+if not de.library_is_open(lib_name):
+    print(f"라이브러리 '{lib_name}'가 열려있지 않습니다.")
+    print("먼저 ADS에서 워크스페이스와 라이브러리를 열어주세요.")
+    raise Exception(f"Library '{lib_name}' not open")
 
+lib = de.get_open_library(lib_name)
 print(f"라이브러리 '{lib_name}' 확인됨")
 
-# 기존 셀이 있으면 삭제
-try:
-    existing_cell = de.get_cell(lib_name, cell_name)
-    if existing_cell:
-        de.delete_cell(lib_name, cell_name)
-        print(f"기존 셀 '{cell_name}' 삭제됨")
-except:
-    pass
+# 기존 셀이 있으면 확인
+view_name = "layout"
+if de.cellview_exists(lib_name, cell_name, view_name):
+    print(f"기존 셀 '{cell_name}' 발견됨 - 덮어씁니다")
 
 # 새 레이아웃 셀 생성
-de.create_layout(lib_name, cell_name)
+cell = lib.create_cell(cell_name)
+layout_view = cell.create_cellview(view_name)
 print(f"새 셀 '{cell_name}' 생성됨")
 
 # DesignEditor로 레이아웃 편집
@@ -196,10 +193,10 @@ editor.add_pin("P2", layer_id, 0, port2_x - pixel_size_um, port_y - port_width_u
 print("포트 2개 추가됨")
 
 # 변경사항 저장
-editor.save()
+lib.save()
 
-# 셀 열기
-de.open_design(lib_name, cell_name)
+# 셀 열기 (UI에서)
+de.ui.open_design(lib_name, cell_name, view_name)
 
 print(f"\n===== 완료 =====")
 print(f"라이브러리: {lib_name}")
